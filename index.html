@@ -53,63 +53,84 @@
     
     <div class="status" id="status-text">Ostatnia aktualizacja: brak</div>
 
-   <script>
-    const baseUrl = "https://soleil.i4ds.ch/solarradio/data/1998-2009_quickviews/";
+<script>
+const baseUrl = "https://soleil.i4ds.ch/solarradio/data/1998-2009_quickviews/";
 
-    // zapamiętanie ostatnich działających obrazów
-    let lastGoodImg1 = "";
-    let lastGoodImg2 = "";
+const MAX_DAYS_BACK = 7;
 
-    function updateImages() {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
+let lastGoodImg1 = "";
+let lastGoodImg2 = "";
 
-        const datePath = `${year}/${month}/${day}/`;
+function getDateString(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return { y, m, d, path: `${y}/${m}/${d}/` };
+}
 
-        const nazwaZdj1 = `POLAND-BALDY_${year}${month}${day}_62.png`;
-        const nazwaZdj2 = `POLAND-BALDY_${year}${month}${day}_63.png`;
+// test czy obraz istnieje
+function checkImage(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = url;
+    });
+}
 
-        const img1Element = document.getElementById('img1');
-        const img2Element = document.getElementById('img2');
-        const statusText = document.getElementById('status-text');
+async function updateImages() {
+    const img1Element = document.getElementById('img1');
+    const img2Element = document.getElementById('img2');
+    const statusText = document.getElementById('status-text');
 
-        const timestamp = new Date().getTime();
+    let found = false;
+    let usedDate = null;
 
-        const fullUrl1 = `${baseUrl}${datePath}${nazwaZdj1}?t=${timestamp}`;
-        const fullUrl2 = `${baseUrl}${datePath}${nazwaZdj2}?t=${timestamp}`;
+    for (let i = 0; i < MAX_DAYS_BACK; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
 
-        // obsługa błędu ładowania (jeśli brak nowego obrazka)
-        img1Element.onerror = () => {
-            if (lastGoodImg1) {
-                img1Element.src = lastGoodImg1;
-            }
-        };
+        const { y, m, d, path } = getDateString(date);
 
-        img2Element.onerror = () => {
-            if (lastGoodImg2) {
-                img2Element.src = lastGoodImg2;
-            }
-        };
+        const name1 = `POLAND-BALDY_${y}${m}${d}_62.png`;
+        const name2 = `POLAND-BALDY_${y}${m}${d}_63.png`;
 
-        // sprawdzamy czy obraz się faktycznie załadował
-        img1Element.onload = () => {
+        const url1 = `${baseUrl}${path}${name1}`;
+        const url2 = `${baseUrl}${path}${name2}`;
+
+        const ok1 = await checkImage(url1);
+        const ok2 = await checkImage(url2);
+
+        if (ok1 && ok2) {
+            const t = new Date().getTime();
+
+            img1Element.src = `${url1}?t=${t}`;
+            img2Element.src = `${url2}?t=${t}`;
+
             lastGoodImg1 = img1Element.src;
-        };
-
-        img2Element.onload = () => {
             lastGoodImg2 = img2Element.src;
-        };
 
-        img1Element.src = fullUrl1;
-        img2Element.src = fullUrl2;
-
-        statusText.innerText = `Ostatnia aktualizacja: ${now.toLocaleTimeString()}`;
+            usedDate = `${y}-${m}-${d}`;
+            found = true;
+            break;
+        }
     }
 
-    updateImages();
-    setInterval(updateImages, 15 * 60 * 1000);
+    if (!found) {
+        // jeśli nic nie znaleziono → zostaw ostatnie działające
+        if (lastGoodImg1) img1Element.src = lastGoodImg1;
+        if (lastGoodImg2) img2Element.src = lastGoodImg2;
+
+        statusText.innerText = `Brak nowych obrazów – pokazuję ostatnie dostępne`;
+        return;
+    }
+
+    const now = new Date();
+    statusText.innerText = `Pokazuję dane z: ${usedDate} | aktualizacja: ${now.toLocaleTimeString()}`;
+}
+
+updateImages();
+setInterval(updateImages, 15 * 60 * 1000);
 </script>
 </body>
 </html>
