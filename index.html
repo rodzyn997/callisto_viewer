@@ -53,47 +53,63 @@
     
     <div class="status" id="status-text">Ostatnia aktualizacja: brak</div>
 
-    <script>
-        // === KONFIGURACJA ===
-        const baseUrl = "https://soleil.i4ds.ch/solarradio/data/1998-2009_quickviews/"; 
-        // ====================
+   <script>
+    const baseUrl = "https://soleil.i4ds.ch/solarradio/data/1998-2009_quickviews/";
 
-        function updateImages() {
-            // Generowanie daty
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            
-            // Ścieżka folderu (np. 2026/05/26/)
-            const datePath = `${year}/${month}/${day}/`; 
-            
-            // Generowanie nazw plików (np. POLAND_20260526_62.png)
-            const nazwaZdj1 = `POLAND-BALDY_${year}${month}${day}_62.png`;
-            const nazwaZdj2 = `POLAND-BALDY_${year}${month}${day}_63.png`;
+    // zapamiętanie ostatnich działających obrazów
+    let lastGoodImg1 = "";
+    let lastGoodImg2 = "";
 
-            const img1Element = document.getElementById('img1');
-            const img2Element = document.getElementById('img2');
-            const statusText = document.getElementById('status-text');
+    function updateImages() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
 
-            // Dodajemy znacznik czasu (timestamp), aby zapobiec wczytywaniu starych zdjęć z pamięci cache
-            const timestamp = new Date().getTime();
-            const fullUrl1 = `${baseUrl}${datePath}${nazwaZdj1}?t=${timestamp}`;
-            const fullUrl2 = `${baseUrl}${datePath}${nazwaZdj2}?t=${timestamp}`;
+        const datePath = `${year}/${month}/${day}/`;
 
-            // Zmiana źródła zdjęć
-            img1Element.src = fullUrl1;
-            img2Element.src = fullUrl2;
+        const nazwaZdj1 = `POLAND-BALDY_${year}${month}${day}_62.png`;
+        const nazwaZdj2 = `POLAND-BALDY_${year}${month}${day}_63.png`;
 
-            // Aktualizacja statusu
-            statusText.innerText = `Ostatnia aktualizacja: ${now.toLocaleTimeString()}`;
-        }
+        const img1Element = document.getElementById('img1');
+        const img2Element = document.getElementById('img2');
+        const statusText = document.getElementById('status-text');
 
-        // Pierwsze załadowanie
-        updateImages();
+        const timestamp = new Date().getTime();
 
-        // Odświeżanie co 15 minut (15 * 60 * 1000)
-        setInterval(updateImages, 15 * 60 * 1000);
-    </script>
+        const fullUrl1 = `${baseUrl}${datePath}${nazwaZdj1}?t=${timestamp}`;
+        const fullUrl2 = `${baseUrl}${datePath}${nazwaZdj2}?t=${timestamp}`;
+
+        // obsługa błędu ładowania (jeśli brak nowego obrazka)
+        img1Element.onerror = () => {
+            if (lastGoodImg1) {
+                img1Element.src = lastGoodImg1;
+            }
+        };
+
+        img2Element.onerror = () => {
+            if (lastGoodImg2) {
+                img2Element.src = lastGoodImg2;
+            }
+        };
+
+        // sprawdzamy czy obraz się faktycznie załadował
+        img1Element.onload = () => {
+            lastGoodImg1 = img1Element.src;
+        };
+
+        img2Element.onload = () => {
+            lastGoodImg2 = img2Element.src;
+        };
+
+        img1Element.src = fullUrl1;
+        img2Element.src = fullUrl2;
+
+        statusText.innerText = `Ostatnia aktualizacja: ${now.toLocaleTimeString()}`;
+    }
+
+    updateImages();
+    setInterval(updateImages, 15 * 60 * 1000);
+</script>
 </body>
 </html>
